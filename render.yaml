@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: pi-treasury-api
+    runtime: python
+    plan: free
+    buildCommand: cd agent && pip install -r requirements.txt
+    startCommand: cd agent && uvicorn web_api:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: PERPLEXITY_API_KEY
+        sync: false
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: FROM_EMAIL
+        sync: false
+      - key: TO_EMAILS
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.12.6"

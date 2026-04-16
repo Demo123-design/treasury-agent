@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+
+# Secrets
+agent/.env
+
+# Data & logs
+agent/data/*.db
+agent/data/*.db-journal
+agent/logs/*.log
+agent/logs/*.html
+
+# Node / React (web/)
+web/node_modules/
+web/dist/
+
+# Editor
+.idea/
+.vscode/
+*.swp
+.DS_Store
