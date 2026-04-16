@@ -1,5 +1,5 @@
 aiohttp==3.9.5
-openai==1.30.1
+openai>=1.52.0
 sendgrid==6.11.0
 apscheduler==3.10.4
 python-dotenv==1.0.1
