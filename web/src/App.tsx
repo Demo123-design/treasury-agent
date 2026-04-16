@@ -16,7 +16,7 @@ function App() {
       <header className="app-header">
         <div className="app-header-inner">
           <div>
-            <h1>PI Industries — Treasury Intelligence</h1>
+            <h1>Treasury Intelligence</h1>
             <p className="subtitle">Daily FX, forwards, alerts &amp; morning briefing</p>
           </div>
           <TriggerRun onRunComplete={bumpRefresh} />
