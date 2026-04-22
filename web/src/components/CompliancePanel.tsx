@@ -133,7 +133,7 @@ function InsightCard({
   const hasEvidence = insight.evidence && insight.evidence.length > 0;
 
   return (
-    <div className={`ci-card${expanded ? " ci-expanded" : ""}`} style={{ borderLeftColor: c.border }}>
+    <div className={`ci-card${expanded ? " ci-expanded" : ""}`}>
       {/* header row */}
       <button className="ci-header" onClick={onToggle}>
         <div className="ci-header-left">

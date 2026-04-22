@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type BriefingDetail, type NewsItem } from "../api";
+import { Markdown } from "./Markdown";
 
 const CATEGORY_LABEL: Record<string, string> = {
   RBI: "RBI & Policy",
@@ -36,7 +37,7 @@ function NewsCard({ item, expanded, onToggle }: { item: NewsItem; expanded: bool
       </header>
       {item.headline && <h3 className="news-headline">{item.headline}</h3>}
       <div className="news-summary">
-        {expanded || !isLong ? summary : truncate(summary)}
+        <Markdown>{expanded || !isLong ? summary : truncate(summary)}</Markdown>
       </div>
       <footer className="news-card-foot">
         {isLong && (

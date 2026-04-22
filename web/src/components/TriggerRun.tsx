@@ -35,7 +35,7 @@ function StageBar({ state }: { state: RunState | null }) {
 }
 
 export function TriggerRun({ onRunComplete }: Props) {
-  const [health, setHealth] = useState<Health | null>(null);
+  const [_, setHealth] = useState<Health | null>(null);
   const [state, setState] = useState<RunState | null>(null);
   const [busy, setBusy] = useState(false);
   const [polling, setPolling] = useState(false);
@@ -63,10 +63,10 @@ export function TriggerRun({ onRunComplete }: Props) {
     return () => window.clearInterval(iv);
   }, [polling, onRunComplete]);
 
-  async function trigger(dryRun: boolean) {
+  async function refresh() {
     setBusy(true);
     try {
-      const r = await api.run(dryRun);
+      const r = await api.run(true);
       if (!r.accepted) {
         alert(r.reason ?? "not accepted");
         setBusy(false);
@@ -81,49 +81,20 @@ export function TriggerRun({ onRunComplete }: Props) {
 
   const status = state?.status ?? "idle";
   const isRunning = status === "running";
-  const badge =
-    status === "running" ? "running" :
-    status === "success" ? "success" :
-    status === "error" ? "error" : "idle";
 
   return (
     <div className="trigger">
-      <div className="trigger-status">
-        <span className={`status-badge ${badge}`}>{status}</span>
-        {state?.finished_at && status !== "running" && (
-          <span className="muted small">
-            last: {state.dry_run ? "dry-run" : "live"} @ {state.finished_at}
-            {state.error ? ` · ${state.error}` : ""}
-          </span>
-        )}
-        {health && !health.has_openai_key && (
-          <span className="muted small keys">openai key missing</span>
-        )}
-      </div>
-
       {(isRunning || (state && Object.values(state.stage_status ?? {}).some(s => s !== "pending"))) && (
         <StageBar state={state} />
       )}
 
-      <div className="trigger-buttons">
-        <button
-          className="btn primary"
-          disabled={busy}
-          onClick={() => void trigger(true)}
-        >
-          Run pipeline (dry-run)
-        </button>
-        <button
-          className="btn"
-          disabled={busy || !health?.has_sendgrid_key}
-          title={!health?.has_sendgrid_key ? "SendGrid key not configured" : ""}
-          onClick={() => {
-            if (confirm("Run the pipeline and send a LIVE email?")) void trigger(false);
-          }}
-        >
-          Run & send live
-        </button>
-      </div>
+      <button
+        className="btn btn-primary"
+        disabled={busy}
+        onClick={() => void refresh()}
+      >
+        {isRunning ? "Refreshing…" : "Refresh data"}
+      </button>
     </div>
   );
 }

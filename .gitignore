@@ -24,3 +24,6 @@ web/dist/
 .vscode/
 *.swp
 .DS_Store
+
+# Claude Code local settings
+.claude/

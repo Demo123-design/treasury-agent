@@ -116,7 +116,6 @@ export function BriefingArchive() {
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showRaw, setShowRaw] = useState(false);
 
   async function loadList() {
     setLoading(true);
@@ -153,7 +152,10 @@ export function BriefingArchive() {
   return (
     <section className="panel archive">
       <div className="panel-header">
-        <h2>Briefing Archive</h2>
+        <div>
+          <h2>Briefing Archive</h2>
+          <p className="panel-sub">Archive of AI-generated morning briefings</p>
+        </div>
         <button className="link-btn" onClick={() => void loadList()}>Refresh</button>
       </div>
 
@@ -191,11 +193,7 @@ export function BriefingArchive() {
               <div className="archive-detail-meta">
                 <div>
                   <strong>{detail.date}</strong> · generated {detail.generated_at}
-                  {detail.delivered ? " · delivered" : " · not delivered"}
                 </div>
-                <button className="link-btn" onClick={() => setShowRaw(v => !v)}>
-                  {showRaw ? "Show parsed view" : "Show raw email"}
-                </button>
               </div>
 
               {detail.alerts.length > 0 && (
@@ -209,25 +207,16 @@ export function BriefingArchive() {
                 </div>
               )}
 
-              {showRaw ? (
-                selected && (
-                  <iframe
-                    className="briefing-frame"
-                    src={api.briefingHtmlUrl(selected)}
-                    title={`Briefing ${selected}`}
-                  />
-                )
+              {detail.sections ? (
+                <SectionsView sections={detail.sections} />
               ) : (
-                <>
-                  {detail.sections ? (
-                    <SectionsView sections={detail.sections} />
-                  ) : (
-                    <p className="muted">
-                      No parsed sections for this briefing. Click "Show raw email" to view the HTML.
-                    </p>
-                  )}
-                  <ForexSnapshot detail={detail} />
-                </>
+                <p className="muted">No parsed sections for this briefing yet.</p>
+              )}
+              <ForexSnapshot detail={detail} />
+              {!detail.sections && (
+                <p className="muted small" style={{ marginTop: 8 }}>
+                  Tip: click <em>Refresh data</em> at the top to regenerate.
+                </p>
               )}
             </>
           )}
