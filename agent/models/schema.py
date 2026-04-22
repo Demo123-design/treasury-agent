@@ -182,3 +182,16 @@ class ComplianceInsight:
     recommended_action: str | None = None
     created_at: str = field(default_factory=now_iso)
     id: int | None = None
+
+
+@dataclass
+class Kpi:
+    id: str
+    name: str
+    category: str
+    value: float | None
+    value_display: str
+    target: str
+    status: str
+    narrative: str
+    sources: list[str] = field(default_factory=list)

@@ -61,6 +61,18 @@ def _col(headers: list[str], *keywords: str) -> int | None:
     return None
 
 
+def _col_any(headers: list[str], *options: tuple) -> int | None:
+    """First column matching any of the option tuples. Handles index 0 correctly
+    (plain `_col(..) or _col(..)` is buggy because 0 is falsy)."""
+    for opt in options:
+        if isinstance(opt, str):
+            opt = (opt,)
+        idx = _col(headers, *opt)
+        if idx is not None:
+            return idx
+    return None
+
+
 def _sheet_records(ws) -> tuple[list[str], list[list]]:
     """Return (headers, data_rows) from a worksheet.  Headers from first row with 3+ values."""
     rows = list(ws.iter_rows(values_only=True))
@@ -765,6 +777,222 @@ def parse_forex_outlook() -> dict:
     return result
 
 
+# ── Optional input-file parsers (for KPI dashboard Phase B) ────────────────
+
+def parse_bank_balances() -> dict:
+    """Bank_Balances.xlsx — per-bank cash balances for cash-position KPIs.
+
+    Expected columns: bank, currency, balance_inr_mn, as_of_date
+    Missing file → records=[], missing=True (L01-L03 render as NA).
+    """
+    wb = _open_xlsx("Bank_Balances.xlsx")
+    if wb is None:
+        return {"records": [], "source": None, "missing": True}
+
+    records = []
+    as_of = None
+    try:
+        ws = wb[wb.sheetnames[0]]
+        headers, rows = _sheet_records(ws)
+        ci = {
+            "bank": _col(headers, "bank"),
+            "currency": _col(headers, "currency"),
+            "balance": _col_any(headers, "balance", "amount"),
+            "as_of": _col_any(headers, ("as", "of"), "date"),
+        }
+        g = lambda row, key: row[ci[key]] if ci[key] is not None and ci[key] < len(row) else None
+
+        for row in rows:
+            bank = _ss(g(row, "bank"))
+            if not bank or "total" in bank.lower():
+                continue
+            d = _sd(g(row, "as_of"))
+            if d:
+                as_of = d
+            records.append({
+                "bank": bank,
+                "currency": _ss(g(row, "currency")) or "INR",
+                "balance_inr_mn": _sf(g(row, "balance")),
+                "as_of_date": d,
+            })
+    except Exception as e:
+        log.error("Error parsing Bank_Balances: %s", e)
+    finally:
+        wb.close()
+    return {"records": records, "source": "Bank_Balances.xlsx", "missing": False, "as_of_date": as_of}
+
+
+def parse_debt_schedule() -> dict:
+    """Debt_Schedule.xlsx — facility-wise debt + EBITDA TTM for leverage KPIs.
+
+    Expected columns: facility, type (fund/non-fund), sanctioned_inr_mn,
+    outstanding_inr_mn, ebitda_ttm_inr_mn, covenant_text
+    Missing file → records=[], missing=True (D01, D02 render as NA).
+    """
+    wb = _open_xlsx("Debt_Schedule.xlsx")
+    if wb is None:
+        return {"records": [], "source": None, "missing": True}
+
+    records = []
+    try:
+        ws = wb[wb.sheetnames[0]]
+        headers, rows = _sheet_records(ws)
+        ci = {
+            "facility": _col_any(headers, "facility", "name"),
+            "type": _col(headers, "type"),
+            "sanctioned": _col_any(headers, "sanctioned", "limit"),
+            "outstanding": _col_any(headers, "outstanding", "utilised", "used"),
+            "ebitda": _col(headers, "ebitda"),
+            "covenant": _col(headers, "covenant"),
+        }
+        g = lambda row, key: row[ci[key]] if ci[key] is not None and ci[key] < len(row) else None
+
+        for row in rows:
+            fac = _ss(g(row, "facility"))
+            if not fac or "total" in fac.lower():
+                continue
+            records.append({
+                "facility": fac,
+                "type": _ss(g(row, "type")),
+                "sanctioned_inr_mn": _sf(g(row, "sanctioned")),
+                "outstanding_inr_mn": _sf(g(row, "outstanding")),
+                "ebitda_ttm_inr_mn": _sf(g(row, "ebitda")),
+                "covenant": _ss(g(row, "covenant")),
+            })
+    except Exception as e:
+        log.error("Error parsing Debt_Schedule: %s", e)
+    finally:
+        wb.close()
+    return {"records": records, "source": "Debt_Schedule.xlsx", "missing": False}
+
+
+def parse_compliance_log() -> dict:
+    """Compliance_Log.xlsx — regulatory filing history for on-time % KPI.
+
+    Expected columns: filing_type, due_date, filed_date, days_late, penalty
+    Missing file → records=[], missing=True (C01 renders as NA).
+    """
+    wb = _open_xlsx("Compliance_Log.xlsx")
+    if wb is None:
+        return {"records": [], "source": None, "missing": True}
+
+    records = []
+    try:
+        ws = wb[wb.sheetnames[0]]
+        headers, rows = _sheet_records(ws)
+        ci = {
+            "type": _col_any(headers, "filing", "type"),
+            "due": _col(headers, "due"),
+            "filed": _col(headers, "filed"),
+            "days_late": _col_any(headers, ("days", "late"), "late"),
+            "penalty": _col(headers, "penalty"),
+        }
+        g = lambda row, key: row[ci[key]] if ci[key] is not None and ci[key] < len(row) else None
+
+        for row in rows:
+            ftype = _ss(g(row, "type"))
+            if not ftype:
+                continue
+            days_late = int(_sf(g(row, "days_late")))
+            records.append({
+                "filing_type": ftype,
+                "due_date": _sd(g(row, "due")),
+                "filed_date": _sd(g(row, "filed")),
+                "days_late": days_late,
+                "on_time": days_late <= 0,
+                "penalty": _ss(g(row, "penalty")),
+            })
+    except Exception as e:
+        log.error("Error parsing Compliance_Log: %s", e)
+    finally:
+        wb.close()
+    return {"records": records, "source": "Compliance_Log.xlsx", "missing": False}
+
+
+def parse_fx_budget() -> dict:
+    """FX_Budget.xlsx — quarter-wise FX budget vs realised for F05.
+
+    Expected columns: quarter, budget_inr_cr, realised_inr_cr, current (Y/N)
+    Missing file → records=[], missing=True (F05 renders as NA).
+    """
+    wb = _open_xlsx("FX_Budget.xlsx")
+    if wb is None:
+        return {"records": [], "source": None, "missing": True}
+
+    records = []
+    try:
+        ws = wb[wb.sheetnames[0]]
+        headers, rows = _sheet_records(ws)
+        ci = {
+            "quarter": _col_any(headers, "quarter", "period"),
+            "budget": _col(headers, "budget"),
+            "realised": _col_any(headers, "realised", "realized", "actual"),
+            "current": _col(headers, "current"),
+        }
+        g = lambda row, key: row[ci[key]] if ci[key] is not None and ci[key] < len(row) else None
+
+        for row in rows:
+            q = _ss(g(row, "quarter"))
+            if not q or "total" in q.lower():
+                continue
+            records.append({
+                "quarter": q,
+                "budget_inr_cr": _sf(g(row, "budget")),
+                "realised_inr_cr": _sf(g(row, "realised")),
+                "is_current": _ss(g(row, "current")).upper() in ("Y", "YES", "TRUE", "1"),
+            })
+    except Exception as e:
+        log.error("Error parsing FX_Budget: %s", e)
+    finally:
+        wb.close()
+    return {"records": records, "source": "FX_Budget.xlsx", "missing": False}
+
+
+def parse_hedge_effectiveness() -> dict:
+    """Hedge_Effectiveness.xlsx — Ind AS 109 CFH test results for C03.
+
+    Expected columns: designation_id, test_date, dollar_offset_pct, pass_fail
+    Missing file → records=[], missing=True (C03 renders as NA).
+    """
+    wb = _open_xlsx("Hedge_Effectiveness.xlsx")
+    if wb is None:
+        return {"records": [], "source": None, "missing": True}
+
+    records = []
+    try:
+        ws = wb[wb.sheetnames[0]]
+        headers, rows = _sheet_records(ws)
+        ci = {
+            "id": _col_any(headers, "designation", "id"),
+            "test_date": _col_any(headers, ("test", "date"), "date"),
+            "offset": _col_any(headers, "offset", "ratio"),
+            "result": _col_any(headers, "pass", "result"),
+        }
+        g = lambda row, key: row[ci[key]] if ci[key] is not None and ci[key] < len(row) else None
+
+        for row in rows:
+            did = _ss(g(row, "id"))
+            if not did:
+                continue
+            offset = _sf(g(row, "offset"))
+            # If stored as 0-1 fraction, scale to percent
+            if 0 < offset <= 2:
+                offset *= 100
+            result_text = _ss(g(row, "result")).upper()
+            passed = result_text in ("PASS", "PASSED", "YES", "Y", "TRUE") or 80 <= offset <= 125
+            records.append({
+                "designation_id": did,
+                "test_date": _sd(g(row, "test_date")),
+                "dollar_offset_pct": offset,
+                "passed": passed,
+            })
+    except Exception as e:
+        log.error("Error parsing Hedge_Effectiveness: %s", e)
+    finally:
+        wb.close()
+    return {"records": records, "source": "Hedge_Effectiveness.xlsx", "missing": False}
+
+
 # ── master function ────────────────────────────────────────────────────────
 
 def parse_all_documents() -> dict[str, Any]:
@@ -782,6 +1010,11 @@ def parse_all_documents() -> dict[str, Any]:
         "hedging_strategy": parse_hedging_strategy(),
         "cash_flow": parse_cash_flow(),
         "forex_outlook": parse_forex_outlook(),
+        "bank_balances": parse_bank_balances(),
+        "debt_schedule": parse_debt_schedule(),
+        "compliance_log": parse_compliance_log(),
+        "hedge_effectiveness": parse_hedge_effectiveness(),
+        "fx_budget": parse_fx_budget(),
     }
 
     # Log summary
