@@ -148,6 +148,34 @@ export type ComplianceScan = {
   insights: ComplianceInsight[];
 };
 
+export type KpiStatus = "GREEN" | "AMBER" | "RED" | "NA";
+
+export type Kpi = {
+  id: string;
+  name: string;
+  category: string;
+  value: number | null;
+  value_display: string;
+  target: string;
+  status: KpiStatus;
+  narrative: string;
+  sources: string[];
+};
+
+export type KpiSnapshot = {
+  as_of: string;
+  total: number;
+  computed: number;
+  missing_inputs: number;
+  by_status: Record<KpiStatus, number>;
+  one_liner: string;
+  categories: string[];
+  kpis: Kpi[];
+  spot_used: number | null;
+};
+
+export type ChatMessage = { role: "user" | "assistant"; content: string };
+
 async function get<T>(path: string): Promise<T> {
   const r = await fetch(`${BASE}${path}`);
   if (!r.ok) throw new Error(`${path} -> HTTP ${r.status}`);
@@ -174,4 +202,17 @@ export const api = {
   runStatus: () => get<RunState>("/api/run/status"),
   compliance: () => get<ComplianceScan>("/api/compliance"),
   complianceLatest: () => get<ComplianceScan>("/api/compliance/latest"),
+  kpis: () => get<KpiSnapshot>("/api/kpis"),
+  chat: async (messages: ChatMessage[]): Promise<{ reply: string }> => {
+    const r = await fetch(`${BASE}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages }),
+    });
+    if (!r.ok) {
+      const body = await r.text();
+      throw new Error(`/api/chat -> HTTP ${r.status}: ${body}`);
+    }
+    return (await r.json()) as { reply: string };
+  },
 };

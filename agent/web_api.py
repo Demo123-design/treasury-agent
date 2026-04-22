@@ -16,6 +16,7 @@ import os
 from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
 
 from config import CONFIG, configure_logging
 from utils import db
@@ -310,3 +311,40 @@ async def compliance_latest() -> dict:
         "by_category": by_category,
         "insights": insights,
     }
+
+
+# ---- headline KPIs --------------------------------------------------------
+
+@app.get("/api/kpis")
+async def get_kpis() -> dict:
+    """Compute 15 headline treasury KPIs from internal docs + live spot."""
+    from agents.kpi_agent import build_kpi_snapshot
+    try:
+        return build_kpi_snapshot()
+    except Exception as exc:
+        log.exception("web_api: KPI build failed: %s", exc)
+        raise HTTPException(status_code=500, detail=f"KPI build failed: {exc}")
+
+
+# ---- treasury chat --------------------------------------------------------
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessage]
+
+
+@app.post("/api/chat")
+async def chat_endpoint(req: ChatRequest) -> dict:
+    """Context-aware treasury assistant. Grounded in current KPIs + docs + market."""
+    from agents.chat_agent import chat
+    try:
+        history = [m.model_dump() for m in req.messages]
+        reply = await chat(history)
+        return {"reply": reply}
+    except Exception as exc:
+        log.exception("web_api: chat failed: %s", exc)
+        raise HTTPException(status_code=500, detail=f"chat failed: {exc}")
