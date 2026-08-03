@@ -34,8 +34,13 @@
 
 .app-brand {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 14px;
+}
+
+.app-logo-img {
+  height: 30px;
+  width: auto;
 }
 
 .app-logo {

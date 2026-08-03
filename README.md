@@ -1,6 +1,6 @@
-# PI Industries - Treasury Intelligence Agent
+# Treasury Intelligence Agent
 
-Automated daily treasury briefing for PI Industries. Fetches spot rates, computes
+Automated daily treasury briefing for a leading Indian agrochemical exporter. Fetches spot rates, computes
 IRP forward curves, pulls live news and policy updates, and emails a structured
 morning briefing to the treasury team at 7:30 AM IST.
 

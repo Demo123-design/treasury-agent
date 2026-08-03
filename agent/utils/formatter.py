@@ -149,7 +149,7 @@ def build_html_email(briefing: dict, forex: dict, news: dict, date: str) -> str:
     parts: list[str] = []
     parts.append(
         '<div style="background:#1a3a5c;color:white;padding:22px;font-family:Arial,sans-serif;">'
-        '<h1 style="margin:0;font-size:20px;">PI Industries - Treasury Intelligence Briefing</h1>'
+        '<h1 style="margin:0;font-size:20px;">Treasury Intelligence Briefing</h1>'
         f'<p style="margin:6px 0 0 0;font-size:12px;opacity:0.85;">{_esc(date)} | Generated at 7:30 AM IST</p>'
         '</div>'
     )

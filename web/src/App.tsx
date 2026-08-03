@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import logo from "./assets/skillnexus-logo.png";
 import { TodayPanel } from "./components/TodayPanel";
 import { NewsPanel } from "./components/NewsPanel";
 import { AlertsPanel } from "./components/AlertsPanel";
@@ -19,8 +20,9 @@ function App() {
       <header className="app-header">
         <div className="app-header-inner">
           <div className="app-brand">
+            <img src={logo} alt="SkillNexus India Consulting" className="app-logo-img" />
             <span className="app-logo">Treasury Intelligence</span>
-            <span className="app-tag">PI Industries · Daily</span>
+            <span className="app-tag">Daily Briefing</span>
           </div>
           <div className="header-ctas">
             <TriggerRun onRunComplete={bumpRefresh} />

@@ -18,7 +18,7 @@ from utils import db
 log = logging.getLogger(__name__)
 
 
-SYSTEM_PROMPT = """You are the PI Industries Treasury Intelligence assistant.
+SYSTEM_PROMPT = """You are the Treasury Intelligence assistant.
 
 You have real-time access to the company's treasury state via the CONTEXT \
 block below: 15 headline KPIs (with RAG status), live FX spot rates, the \
